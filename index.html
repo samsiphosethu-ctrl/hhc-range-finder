@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HHC Starting Range Finder</title>
+<style>
+/* ── Reset & base ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #ffffff;
+  color: #1B3A2F;
+  -webkit-font-smoothing: antialiased;
+}
+ 
+/* ── Layout shell ─────────────────────────────────────────── */
+.finder {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 28px 20px 32px;
+}
+ 
+/* ── Header ───────────────────────────────────────────────── */
+.finder-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+ 
+.finder-eyebrow {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7A8B82;
+  margin-bottom: 8px;
+}
+ 
+.finder-title {
+  font-size: clamp(18px, 4vw, 22px);
+  font-weight: 700;
+  color: #1B3A2F;
+  line-height: 1.25;
+  margin-bottom: 6px;
+}
+ 
+.finder-sub {
+  font-size: 13px;
+  color: #7A8B82;
+  line-height: 1.5;
+}
+ 
+/* ── Progress bar ─────────────────────────────────────────── */
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+ 
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: #EEF3F0;
+  border-radius: 99px;
+  overflow: hidden;
+}
+ 
+.progress-fill {
+  height: 100%;
+  background: #1B3A2F;
+  border-radius: 99px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 0%;
+}
+ 
+.progress-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #7A8B82;
+  white-space: nowrap;
+  min-width: 36px;
+  text-align: right;
+}
+ 
+/* ── Step container ───────────────────────────────────────── */
+.steps-container {
+  position: relative;
+  min-height: 220px;
+}
+ 
+.step {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  animation: stepIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.step.active { display: flex; }
+ 
+@keyframes stepIn {
+  from { opacity: 0; transform: translateX(18px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+ 
+.step-question {
+  font-size: clamp(14px, 3.5vw, 16px);
+  font-weight: 700;
+  color: #1B3A2F;
+  line-height: 1.35;
+  margin-bottom: 6px;
+}
+ 
+/* ── Option cards ─────────────────────────────────────────── */
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+ 
+.option-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  background: #F8F6F2;
+  border: 1.5px solid #E8E4DF;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+ 
+.option-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #1B3A2F;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  border-radius: inherit;
+}
+ 
+.option-btn:hover {
+  border-color: #1B3A2F;
+  background: #EEF3F0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(27, 58, 47, 0.10);
+}
+ 
+.option-btn:active {
+  transform: translateY(0px);
+  box-shadow: none;
+}
+ 
+.option-btn.selected {
+  border-color: #1B3A2F;
+  background: #1B3A2F;
+}
+ 
+.option-icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 32px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+ 
+.option-text {
+  position: relative;
+  z-index: 1;
+}
+ 
+.option-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1B3A2F;
+  line-height: 1.2;
+  transition: color 0.18s ease;
+}
+ 
+.option-btn.selected .option-label { color: #ffffff; }
+.option-btn:hover:not(.selected) .option-label { color: #1B3A2F; }
+ 
+.option-desc {
+  font-size: 12px;
+  color: #7A8B82;
+  line-height: 1.35;
+  margin-top: 1px;
+  transition: color 0.18s ease;
+}
+ 
+.option-btn.selected .option-desc { color: rgba(255,255,255,0.72); }
+ 
+.option-check {
+  margin-left: auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid #C8C4BE;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
+  position: relative;
+  z-index: 1;
+}
+ 
+.option-btn.selected .option-check {
+  background: #ffffff;
+  border-color: #ffffff;
+}
+ 
+.option-check::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1B3A2F;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.18s ease;
+}
+ 
+.option-btn.selected .option-check::after {
+  opacity: 1;
+  transform: scale(1);
+}
+ 
+/* ── Navigation ───────────────────────────────────────────── */
+.nav-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  gap: 10px;
+}
+ 
+.btn-back {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7A8B82;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 4px;
+  transition: color 0.18s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+ 
+.btn-back:hover { color: #1B3A2F; }
+.btn-back.hidden { visibility: hidden; pointer-events: none; }
+ 
+.btn-next {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #1B3A2F;
+  border: none;
+  border-radius: 99px;
+  padding: 11px 26px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  letter-spacing: 0.01em;
+}
+ 
+.btn-next:hover {
+  background: #2a5940;
+  box-shadow: 0 4px 14px rgba(27, 58, 47, 0.22);
+  transform: translateY(-1px);
+}
+ 
+.btn-next:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+ 
+/* ── Result card ──────────────────────────────────────────── */
+.result {
+  display: none;
+  animation: stepIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+ 
+.result.active { display: block; }
+ 
+.result-card {
+  background: #1B3A2F;
+  border-radius: 16px;
+  padding: 26px 22px 22px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+ 
+.result-card::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: rgba(212, 160, 74, 0.12);
+}
+ 
+.result-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #D4A04A;
+  background: rgba(212, 160, 74, 0.15);
+  border-radius: 99px;
+  padding: 4px 10px;
+  margin-bottom: 14px;
+}
+ 
+.result-range {
+  font-size: clamp(34px, 8vw, 44px);
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+ 
+.result-range span {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0;
+}
+ 
+.result-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.75);
+  margin-bottom: 18px;
+}
+ 
+.result-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+ 
+.result-meta-item {
+  background: rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 11px 13px;
+}
+ 
+.result-meta-key {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 4px;
+}
+ 
+.result-meta-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+}
+ 
+.result-feel {
+  background: #F8F6F2;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+ 
+.result-feel-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7A8B82;
+  margin-bottom: 5px;
+}
+ 
+.result-feel-text {
+  font-size: 14px;
+  color: #1B3A2F;
+  line-height: 1.5;
+  font-weight: 500;
+}
+ 
+.result-tip {
+  background: rgba(212, 160, 74, 0.10);
+  border-left: 3px solid #D4A04A;
+  border-radius: 0 8px 8px 0;
+  padding: 11px 14px;
+  font-size: 13px;
+  color: #5A4010;
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+ 
+.result-tip strong { color: #7A4A00; }
+ 
+.btn-restart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  color: #7A8B82;
+  background: none;
+  border: 1.5px solid #E0DDD8;
+  border-radius: 99px;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+ 
+.btn-restart:hover {
+  border-color: #1B3A2F;
+  color: #1B3A2F;
+  background: #EEF3F0;
+}
+ 
+/* ── Dots indicator ───────────────────────────────────────── */
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 18px;
+}
+ 
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #D8D4CF;
+  transition: all 0.25s ease;
+}
+ 
+.dot.active {
+  background: #1B3A2F;
+  width: 18px;
+  border-radius: 99px;
+}
+ 
+.dot.done {
+  background: #7A8B82;
+}
+</style>
+</head>
+<body>
+ 
+<div class="finder" id="finder">
+ 
+  <!-- Header -->
+  <div class="finder-header">
+    <span class="finder-eyebrow">HHC Dosage Tool</span>
+    <h2 class="finder-title">Find Your Starting Range</h2>
+    <p class="finder-sub">3 quick questions. Tap to get your personalised recommendation.</p>
+  </div>
+ 
+  <!-- Progress -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="progress-label" id="progressLabel">1 of 3</span>
+  </div>
+ 
+  <!-- Steps -->
+  <div class="steps-container">
+ 
+    <!-- Step 1 -->
+    <div class="step active" id="step-1">
+      <p class="step-question">Have you tried cannabis or hemp products before?</p>
+      <div class="options">
+        <button class="option-btn" data-step="1" data-val="never" onclick="selectOption(this)">
+          <span class="option-icon">🌱</span>
+          <span class="option-text">
+            <span class="option-label">First time</span>
+            <span class="option-desc">I'm new to cannabinoids entirely</span>
+          </span>
+          <span class="option-check"></span>
+        </button>
+        <button class="option-btn" data-step="1" data-val="sometimes" onclick="selectOption(this)">
+          <span class="option-icon">🌿</span>
+          <span class="option-text">
+            <span class="option-label">A few times</span>
+            <span class="option-desc">Some experience, still building my sense of it</span>
+          </span>
+          <span class="option-check"></span>
+        </button>
+        <button class="option-btn" data-step="1" data-val="regularly" onclick="selectOption(this)">
+          <span class="option-icon">🌲</span>
+          <span class="option-text">
+            <span class="option-label">Regularly</span>
+            <span class="option-desc">I use cannabis or hemp products often</span>
+          </span>
+          <span class="option-check"></span>
+        </button>
+      </div>
+    </div>
+ 
+    <!-- Step 2 -->
+    <div class="step" id="step-2">
+      <p class="step-question">What kind of experience are you looking for?</p>
+      <div class="options">
+        <button class="option-btn" data-step="2" data-val="unwind" onclick="selectOption(this)">
+          <span class="option-icon">🌙</span>
+          <span class="option-text">
+            <span class="option-label">Wind down &amp; relax</span>
+            <span class="option-desc">Ease into the evening, promote tranquility</span>
+          </span>
+          <span class="option-check"></span>
+        </button>
+        <button class="option-btn" data-step="2" data-val="uplift" onclick="selectOption(this)">
+          <span class="option-icon">✨</span>
+          <span class="option-text">
+            <span class="option-label">Uplift my mood</span>
+            <span class="option-desc">Light, positive feelings and social ease</span>
+          </span>
+          <span class="option-check"></span>
+        </button>
+        <button class="option-btn" data-step="2" data-val="deep" onclick="selectOption(this)">
+          <span class="option-icon">🌊</span>
+          <span class="option-text">
+            <span class="option-label">Deep body calm</span>
+            <span class="option-desc">Full body relaxation, promote physical comfort</span>
+          </span>
+          <span class="option-check"></span>
+        </button>
+      </div>
+    </div>
+ 
+    <!-- Step 3 -->
+    <div class="step" id="step-3">
+      <p class="step-question">Which format are you using?</p>
+      <div class="options">
+        <button class="option-btn" data-step="3" data-val="vape" onclick="selectOption(this)">
+          <span class="option-icon">💨</span>
+          <span class="option-text">
+            <span class="option-label">Vape</span>
+            <span class="option-desc">Fast-acting, effects arrive in minutes</span>
+          </span>
+          <span class="option-check"></span>
+        </button>
+        <button class="option-btn" data-step="3" data-val="gummy" onclick="selectOption(this)">
+          <span class="option-icon">🍬</span>
+          <span class="option-text">
+            <span class="option-label">Gummies or edibles</span>
+            <span class="option-desc">Longer onset, longer-lasting experience</span>
+          </span>
+          <span class="option-check"></span>
+        </button>
+        <button class="option-btn" data-step="3" data-val="cap" onclick="selectOption(this)">
+          <span class="option-icon">💊</span>
+          <span class="option-text">
+            <span class="option-label">Gel capsules</span>
+            <span class="option-desc">Precise, consistent, longer onset window</span>
+          </span>
+          <span class="option-check"></span>
+        </button>
+        <button class="option-btn" data-step="3" data-val="tincture" onclick="selectOption(this)">
+          <span class="option-icon">🧪</span>
+          <span class="option-text">
+            <span class="option-label">Tincture</span>
+            <span class="option-desc">Sublingual, medium-speed onset</span>
+          </span>
+          <span class="option-check"></span>
+        </button>
+      </div>
+    </div>
+ 
+  </div><!-- /steps-container -->
+ 
+  <!-- Navigation -->
+  <div class="nav-row" id="navRow">
+    <button class="btn-back hidden" id="btnBack" onclick="goBack()">&#8592; Back</button>
+    <button class="btn-next" id="btnNext" onclick="goNext()" disabled>Continue</button>
+  </div>
+ 
+  <!-- Step dots -->
+  <div class="dots" id="dotsEl">
+    <div class="dot active" id="dot-0"></div>
+    <div class="dot" id="dot-1"></div>
+    <div class="dot" id="dot-2"></div>
+  </div>
+ 
+  <!-- Result -->
+  <div class="result" id="resultEl">
+ 
+    <div class="result-card">
+      <div class="result-tag">&#10003; Your starting range</div>
+      <div class="result-range" id="resultRange">5<span>mg</span></div>
+      <div class="result-label" id="resultLabel">Beginner starting point</div>
+      <div class="result-meta">
+        <div class="result-meta-item">
+          <div class="result-meta-key">Wait before more</div>
+          <div class="result-meta-val" id="resultWait">2 hours</div>
+        </div>
+        <div class="result-meta-item">
+          <div class="result-meta-key">Peak window</div>
+          <div class="result-meta-val" id="resultPeak">1.5&#8211;3 hrs</div>
+        </div>
+      </div>
+    </div>
+ 
+    <div class="result-feel">
+      <div class="result-feel-label">What to expect</div>
+      <p class="result-feel-text" id="resultFeel">A gentle shift in mood and a light sense of ease.</p>
+    </div>
+ 
+    <div class="result-tip" id="resultTip">
+      <strong>Start here:</strong> If your product is 25mg per unit, take less than half to hit this range. Wait the full minimum time before considering more.
+    </div>
+ 
+    <button class="btn-restart" onclick="restart()">&#8635; Start over</button>
+ 
+  </div>
+ 
+  <!-- Dots below result (hidden during result) -->
+</div><!-- /finder -->
+ 
+<script>
+// ── State ────────────────────────────────────────────────────
+var currentStep = 1;
+var totalSteps  = 3;
+var answers     = { 1: null, 2: null, 3: null };
+ 
+// ── Result data matrix ───────────────────────────────────────
+// Keys: experience (never/sometimes/regularly) × format (vape/gummy/cap/tincture)
+var RANGES = {
+  never: {
+    vape:     { range: '5',      label: 'Beginner starting point', wait: '15&#8211;20 min', peak: '15&#8211;30 min' },
+    gummy:    { range: '5',      label: 'Beginner starting point', wait: '2 hours',          peak: '1.5&#8211;3 hrs' },
+    cap:      { range: '5',      label: 'Beginner starting point', wait: '2 hours',          peak: '2&#8211;3 hrs'   },
+    tincture: { range: '5',      label: 'Beginner starting point', wait: '45&#8211;60 min',  peak: '45&#8211;60 min' }
+  },
+  sometimes: {
+    vape:     { range: '5&#8211;10', label: 'Light to moderate range', wait: '15&#8211;20 min', peak: '15&#8211;30 min' },
+    gummy:    { range: '10',         label: 'Moderate starting point', wait: '2 hours',          peak: '1.5&#8211;3 hrs' },
+    cap:      { range: '10',         label: 'Moderate starting point', wait: '2 hours',          peak: '2&#8211;3 hrs'   },
+    tincture: { range: '10',         label: 'Moderate starting point', wait: '45&#8211;60 min',  peak: '45&#8211;60 min' }
+  },
+  regularly: {
+    vape:     { range: '10&#8211;20', label: 'Intermediate range',   wait: '15&#8211;20 min', peak: '15&#8211;30 min' },
+    gummy:    { range: '20+',         label: 'Experienced range',    wait: '2 hours',          peak: '1.5&#8211;3 hrs' },
+    cap:      { range: '20+',         label: 'Experienced range',    wait: '2 hours',          peak: '2&#8211;3 hrs'   },
+    tincture: { range: '20',          label: 'Experienced range',    wait: '45&#8211;60 min',  peak: '45&#8211;60 min' }
+  }
+};
+ 
+// What to expect copy — keyed by experience × vibe
+var FEEL = {
+  never: {
+    unwind:  'A subtle sense of calm settles in. Expect a light body ease and a quiet mind. Perfect for easing into the evening.',
+    uplift:  'A gentle lift in mood with a soft, pleasant warmth. Light and clear-headed, with a natural sense of well-being.',
+    deep:    'A soft body calm that promotes physical relaxation. Keep the amount low your first time. The experience builds gradually.'
+  },
+  sometimes: {
+    unwind:  'Deeper relaxation kicks in, a noticeable shift in mood, and a comfortable wind-down that helps you ease into the evening.',
+    uplift:  'A pleasant uplift in mood and an enhanced sense of well-being. Social, easy, and enjoyable.',
+    deep:    'Pronounced body calm and a deeper sense of physical relaxation. Give it the full two hours before you decide it needs adjusting.'
+  },
+  regularly: {
+    unwind:  'A strong sense of evening calm with deeper body relaxation. HHC is potent. Your usual tolerance is a guide, not a guarantee.',
+    uplift:  'Noticeable euphoria and an uplifted mood. HHC lands between Delta-8 and Delta-9 in potency, so calibrate from your existing experience.',
+    deep:    'Pronounced body sensation and deep physical calm. At this range, the full absorption window matters. Wait before adding more.'
+  }
+};
+ 
+var FORMAT_TIPS = {
+  vape:     'Vapes are fast-acting. Effects arrive in 2&#8211;5 minutes. Give it at least 15&#8211;20 minutes before deciding you need more.',
+  gummy:    'Gummies work through your digestive system. The two-hour wait is non-negotiable. Both servings will arrive together if you stack too soon.',
+  cap:      'Gel caps have the longest onset window. Peak effects arrive at 2&#8211;3 hours. At 60 minutes, the cap is still working. Give it time.',
+  tincture: 'Tinctures absorb under the tongue. Hold for 60&#8211;90 seconds for best results, then wait 45&#8211;60 minutes before considering more.'
+};
+ 
+// ── UI helpers ───────────────────────────────────────────────
+function selectOption(btn) {
+  var step = parseInt(btn.dataset.step, 10);
+  // Deselect siblings
+  var siblings = document.querySelectorAll('[data-step="' + step + '"]');
+  siblings.forEach(function(b) { b.classList.remove('selected'); });
+  // Select this
+  btn.classList.add('selected');
+  answers[step] = btn.dataset.val;
+  // Enable next
+  document.getElementById('btnNext').disabled = false;
+}
+ 
+function updateProgress() {
+  var pct = ((currentStep - 1) / totalSteps) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = currentStep + ' of ' + totalSteps;
+  // Dots
+  for (var i = 0; i < totalSteps; i++) {
+    var dot = document.getElementById('dot-' + i);
+    dot.className = 'dot';
+    if (i + 1 < currentStep) dot.classList.add('done');
+    else if (i + 1 === currentStep) dot.classList.add('active');
+  }
+  // Back button
+  var backBtn = document.getElementById('btnBack');
+  if (currentStep > 1) {
+    backBtn.classList.remove('hidden');
+  } else {
+    backBtn.classList.add('hidden');
+  }
+}
+ 
+function showStep(n) {
+  for (var i = 1; i <= totalSteps; i++) {
+    var el = document.getElementById('step-' + i);
+    el.classList.remove('active');
+  }
+  var target = document.getElementById('step-' + n);
+  // Trigger re-animation
+  target.style.animation = 'none';
+  target.offsetHeight; // reflow
+  target.style.animation = '';
+  target.classList.add('active');
+}
+ 
+function goNext() {
+  if (!answers[currentStep]) return;
+  if (currentStep < totalSteps) {
+    currentStep++;
+    showStep(currentStep);
+    document.getElementById('btnNext').disabled = !answers[currentStep];
+    updateProgress();
+    if (currentStep === totalSteps) {
+      document.getElementById('btnNext').textContent = 'See my range';
+    }
+    notifyHeight();
+  } else {
+    showResult();
+  }
+}
+ 
+function goBack() {
+  if (currentStep > 1) {
+    currentStep--;
+    showStep(currentStep);
+    document.getElementById('btnNext').disabled = false; // already answered
+    document.getElementById('btnNext').textContent = currentStep === totalSteps ? 'See my range' : 'Continue';
+    updateProgress();
+    notifyHeight();
+  }
+}
+ 
+function showResult() {
+  // Hide steps UI
+  document.getElementById('progressWrap').style.display = 'none';
+  document.getElementById('navRow').style.display      = 'none';
+  document.getElementById('dotsEl').style.display      = 'none';
+  document.querySelector('.finder-header').style.display = 'none';
+ 
+  // Hide all steps
+  for (var i = 1; i <= totalSteps; i++) {
+    document.getElementById('step-' + i).classList.remove('active');
+  }
+  document.querySelector('.steps-container').style.display = 'none';
+ 
+  // Compute result
+  var exp    = answers[1];
+  var vibe   = answers[2];
+  var format = answers[3];
+  var data   = RANGES[exp][format];
+  var feel   = FEEL[exp][vibe];
+  var tip    = FORMAT_TIPS[format];
+ 
+  // Populate
+  document.getElementById('resultRange').innerHTML = data.range + '<span>mg</span>';
+  document.getElementById('resultLabel').textContent = data.label;
+  document.getElementById('resultWait').innerHTML  = data.wait;
+  document.getElementById('resultPeak').innerHTML  = data.peak;
+  document.getElementById('resultFeel').textContent = feel;
+  document.getElementById('resultTip').innerHTML   = '<strong>Format tip:</strong> ' + tip;
+ 
+  // Show result
+  document.getElementById('resultEl').classList.add('active');
+  notifyHeight();
+}
+ 
+function restart() {
+  // Reset state
+  currentStep = 1;
+  answers = { 1: null, 2: null, 3: null };
+ 
+  // Clear selections
+  document.querySelectorAll('.option-btn').forEach(function(b) {
+    b.classList.remove('selected');
+  });
+ 
+  // Restore UI
+  document.getElementById('progressWrap').style.display = '';
+  document.getElementById('navRow').style.display      = '';
+  document.getElementById('dotsEl').style.display      = '';
+  document.querySelector('.finder-header').style.display = '';
+  document.querySelector('.steps-container').style.display = '';
+ 
+  // Hide result
+  document.getElementById('resultEl').classList.remove('active');
+ 
+  // Reset step
+  showStep(1);
+  document.getElementById('btnNext').disabled = true;
+  document.getElementById('btnNext').textContent = 'Continue';
+  updateProgress();
+  notifyHeight();
+}
+ 
+// ── iframe auto-height via postMessage ───────────────────────
+function notifyHeight() {
+  var h = document.getElementById('finder').scrollHeight;
+  try {
+    window.parent.postMessage({ type: 'iframeHeight', height: h + 24 }, '*');
+  } catch(e) {}
+}
+ 
+// ResizeObserver fallback for dynamic content
+if (window.ResizeObserver) {
+  var ro = new ResizeObserver(function() { notifyHeight(); });
+  ro.observe(document.getElementById('finder'));
+}
+ 
+// ── Init ─────────────────────────────────────────────────────
+updateProgress();
+notifyHeight();
+</script>
+ 
+</body>
+</html>
